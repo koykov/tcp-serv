@@ -21,7 +21,7 @@ type Handler interface {
 
 // TCP server.
 type Server struct {
-	addr     string
+	addr        string
 	idleTimeout time.Duration
 	bytesLimit  int64
 
@@ -35,7 +35,7 @@ type Server struct {
 // The constructor.
 func NewServer(address string, idleTimeout time.Duration, bytesLimit int64) *Server {
 	s := Server{
-		addr:     address,
+		addr:        address,
 		idleTimeout: idleTimeout,
 		bytesLimit:  bytesLimit,
 		connections: make(map[*Conn]bool),
@@ -64,11 +64,13 @@ func (s *Server) ListenAndServe(h Handler) (err error) {
 
 	s.Log(fmt.Sprintf("waiting for requests on %s", s.addr))
 
+	// Waiting for new connections.
 	for {
 		if s.stop {
 			break
 		}
 
+		// Accept new connection.
 		connRaw, err := s.listener.Accept()
 		if err != nil {
 			s.Log(err)
@@ -77,6 +79,8 @@ func (s *Server) ListenAndServe(h Handler) (err error) {
 		s.Log(fmt.Sprintf("connection accepted from %s", connRaw.RemoteAddr()))
 		conn := NewConn(&connRaw, s.idleTimeout, s.bytesLimit)
 		s.addConn(conn)
+
+		// Process each connection concurrently.
 		go func(conn *Conn) {
 			defer func(conn *Conn) {
 				s.closeConn(conn)
@@ -88,6 +92,7 @@ func (s *Server) ListenAndServe(h Handler) (err error) {
 			cbuf := make(chan []byte)
 			timeout := time.After(s.idleTimeout)
 			for {
+				// Waiting for reading from the connection.
 				go func(cbuf chan []byte, r *bufio.Reader) {
 					buf := make([]byte, BufSize)
 					_, err := r.Read(buf)
@@ -100,23 +105,28 @@ func (s *Server) ListenAndServe(h Handler) (err error) {
 
 				select {
 				case <-timeout:
+					// Oops, we caught a timeout.
 					err = io.EOF
 					return
 				case buf := <-cbuf:
+					// Red buffer isn't empty, process the data.
 					out, err := h.Handle(buf)
 					if err != nil {
 						s.Log(err)
 						return
 					}
+					// Write response to connection.
 					_, err = w.Write(out)
 					if err != nil {
 						s.Log(err)
 						return
 					}
+					// Flush the connection.
 					err = w.Flush()
 					if err != nil {
 						s.Log(err)
 					}
+					// Update timeout,
 					timeout = time.After(s.idleTimeout)
 				}
 			}
@@ -126,6 +136,7 @@ func (s *Server) ListenAndServe(h Handler) (err error) {
 	return
 }
 
+// Add new connection to the list.
 func (s *Server) addConn(conn *Conn) {
 	s.mux.Lock()
 	s.connections[conn] = true
@@ -142,7 +153,6 @@ func (s *Server) closeConn(conn *Conn) {
 
 // Shutdown the server.
 func (s *Server) Shutdown() {
-	// should be guarded by mu
 	s.stop = true
 	s.Log("shutting down at", time.Now())
 	_ = s.listener.Close()
@@ -159,7 +169,8 @@ func (s *Server) Shutdown() {
 	}
 }
 
-func (s *Server) Log(a... interface{}) {
+// Send message to the logger.
+func (s *Server) Log(a ...interface{}) {
 	if s.logger == nil {
 		return
 	}

@@ -17,9 +17,9 @@ type Conn struct {
 // The constructor.
 func NewConn(raw *net.Conn, idleTimeout time.Duration, bytesLimit int64) *Conn {
 	conn := Conn{
-		Conn: *raw,
+		Conn:        *raw,
 		idleTimeout: idleTimeout,
-		bytesLimit: bytesLimit,
+		bytesLimit:  bytesLimit,
 	}
 	_ = conn.SetDeadline(time.Now().Add(conn.idleTimeout))
 

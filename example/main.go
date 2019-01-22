@@ -12,7 +12,7 @@ import (
 
 // Simple echo handler.
 // Just returns back what you said.
-type EchoHandler struct {}
+type EchoHandler struct{}
 
 // The constructor.
 func NewEchoHandler() *EchoHandler {
@@ -30,7 +30,7 @@ func main() {
 	// Init.
 	logger := io.Writer(os.Stdout)
 	h := NewEchoHandler()
-	s := tcp_serv.NewServer(":9000", time.Second * 5, tcp_serv.BufSize)
+	s := tcp_serv.NewServer(":9000", time.Second*5, tcp_serv.BufSize)
 	s.SetLogger(&logger)
 
 	// Listen.
