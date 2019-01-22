@@ -128,6 +128,7 @@ func (s *Server) ListenAndServe(h Handler) (err error) {
 					}
 					// Update timeout,
 					timeout = time.After(s.idleTimeout)
+					return
 				}
 			}
 		}(conn)
